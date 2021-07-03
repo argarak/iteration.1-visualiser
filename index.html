@@ -5,12 +5,21 @@
          padding: 0;
          overflow: none;
          background-color: #111;
+
+         overflow: hidden;
+     }
+
+     #maincontainer {
+         display: flex;
+         justify-content: center;
+         align-items: center;
+
+         width: 100vw;
+         height: 100vh;
      }
 
      #visualiseCanvas {
-         position: fixed;
-         top: 0;
-         left: 0;
+         height: 100%;
      }
 
     </style>
@@ -19,7 +28,9 @@
     </head>
 
     <body>
-        <canvas id="visualiseCanvas" width="1920" height="1080"></canvas>
+        <div id="maincontainer">
+            <canvas id="visualiseCanvas" width="512" height="512"></canvas>
+        </div>
         <script src="main.js"></script>
     </body>
 </html>

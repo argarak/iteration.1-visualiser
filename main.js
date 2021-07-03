@@ -8,6 +8,19 @@ class MusicsCanvas {
     this.analyser = null;
 
     this.barGradient = null;
+    this.lineWidth = 1;
+    this.lineColour = "#aaa";
+
+    this.ctx = null;
+    this.canvas = null;
+
+    this.threshold = {
+      low: 10,
+      mid: 128,
+      high: 128
+    };
+
+    this.squareData = [new Array(16), new Array(64), new Array(256)];
   }
 
   rand(min, max) {
@@ -20,9 +33,14 @@ class MusicsCanvas {
     let canvas = document.getElementById("visualiseCanvas");
     if (canvas.getContext) {
       var ctx = canvas.getContext("2d");
+      this.ctx = ctx;
+      this.canvas = canvas;
     } else {
       console.error("canvas could not be initialised");
     }
+
+    ctx.lineWidth = this.lineWidth;
+    ctx.strokeStyle = this.lineColour;
 
     if (this.analyser) {
       // fft data stuff
@@ -33,62 +51,88 @@ class MusicsCanvas {
       this.barsWidth = this.width / this.bufferLength * 2.5;
     }
 
-    if (!this.barGradient) {
-      // rainbow gradient!!
-      this.barGradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 1.2);
-      let sumcolors = 1 / 4;
-      this.barGradient.addColorStop(sumcolors * 0, "red");
-      this.barGradient.addColorStop(sumcolors * 1, "orange");
-      this.barGradient.addColorStop(sumcolors * 2, "yellow");
-      this.barGradient.addColorStop(sumcolors * 3, "green");
-    }
-
     this.x = canvas.width / 2;
     this.y = canvas.height / 2;
 
     ctx.imageSmoothingEnabled = false;
 
-    for (let i = 0; i < Math.floor(canvas.width / this.barsWidth); i++) {
-      ctx.fillStyle = this.barGradient;
-      ctx.fillRect(
-        i * (this.barsWidth + this.barsGap),
-        canvas.height - this.initHeight,
-        this.barsWidth,
-        this.initHeight
-      );
-    }
-
     requestAnimationFrame(() => {
       this.updateCanvas(ctx, canvas);
     });
+  }
+
+  // [[0, 0], [canvas.width / 2, 0], [0, canvas.height / 2], [canvas.width / 2, canvas.height / 2]]
+
+  randomSquareData() {
+    for (let depth = 0; depth < 3; depth++) {
+      for (let index = 0; index < this.squareData[depth].length; index++) {
+        if (this.rand(0, 10) % 4 === 0) {
+          this.squareData[depth][index] = 1;
+        } else {
+          this.squareData[depth][index] = null;
+        }
+      }
+    }
+  }
+
+  drawSquareData() {
+    for (let depth = 0; depth < 3; depth++) {
+      for (
+        let yindex = 0;
+        yindex < Math.sqrt(this.squareData[depth].length);
+        yindex++
+      ) {
+        for (
+          let xindex = 0;
+          xindex < Math.sqrt(this.squareData[depth].length);
+          xindex++
+        ) {
+          let size =
+            this.canvas.width / Math.sqrt(this.squareData[depth].length);
+
+          if (
+            this.squareData[depth][
+              xindex + yindex * Math.sqrt(this.squareData[depth].length)
+            ] === 1
+          ) {
+            this.ctx.lineWidth = this.lineWidth;
+            this.ctx.strokeStyle = this.lineColour;
+            this.ctx.rect(xindex * size, yindex * size, size, size);
+            this.ctx.stroke();
+          }
+        }
+      }
+    }
   }
 
   updateCanvas(ctx, canvas) {
-    this.analyser.getByteFrequencyData(this.dataArray);
-
-    // clear screen
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    this.randomMod = Math.sin((this.counter % 2e5) / 2000) * 5;
-
-    for (let i = 0; i < this.bufferLength; i++) {
-      let barHeight = this.dataArray[i] / 2;
-      this.counter++;
-
-      ctx.fillStyle = this.barGradient;
-      ctx.fillRect(
-        i * (this.barsWidth + this.barsGap),
-        canvas.height - this.initHeight,
-        this.barsWidth,
-        -barHeight * (canvas.height / 255 * 2)
-      );
-    }
-
-    // things
-    requestAnimationFrame(() => {
-      this.updateCanvas(ctx, canvas);
-    });
+    // this.analyser.getByteFrequencyData(this.dataArray);
+    // // clear screen
+    // ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // /* get realtime fft data */
+    // let fftAvg = [0, 0, 0];
+    // for (let j = 0; j < 3; j++) {
+    //   for (
+    //     let i = Math.floor(this.bufferLength / 3 * j);
+    //     i < this.bufferLength / 3 * (j + 1);
+    //     i++
+    //   ) {
+    //     fftAvg[j] += this.dataArray[i];
+    //   }
+    //   fftAvg[j] = fftAvg[j] / this.bufferLength / 3;
+    // }
+    ///////////////////////////////////////
+    // this.drawSquareData(ctx, canvas); //
+    //                                   //
+    // // things                         //
+    // requestAnimationFrame(() => {     //
+    //   this.updateCanvas(ctx, canvas); //
+    // });                               //
+    ///////////////////////////////////////
   }
 }
+
+let musicCanvas = new MusicsCanvas();
 
 document.addEventListener("DOMContentLoaded", () => {
   var constraints = {audio: true, video: false};
@@ -103,7 +147,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const track = audioCtx.createMediaStreamSource(mediaStream);
 
       track.connect(analyser);
-      let musicCanvas = new MusicsCanvas();
       musicCanvas.analyser = analyser;
 
       musicCanvas.canvasInit();
