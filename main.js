@@ -14,11 +14,7 @@ class MusicsCanvas {
     this.ctx = null;
     this.canvas = null;
 
-    this.threshold = {
-      low: 10,
-      mid: 128,
-      high: 128
-    };
+    this.threshold = [10, 10, 4];
 
     this.squareData = [new Array(16), new Array(64), new Array(256)];
   }
@@ -63,13 +59,24 @@ class MusicsCanvas {
 
   // [[0, 0], [canvas.width / 2, 0], [0, canvas.height / 2], [canvas.width / 2, canvas.height / 2]]
 
-  randomSquareData() {
+  generateSquareData(fftAvg) {
+    //console.log(fftAvg);
+
     for (let depth = 0; depth < 3; depth++) {
+      let selSquare;
+      let drawSquare = false;
+
+      if (fftAvg[depth] > this.threshold[depth]) {
+        // choose a random number depending on depth
+        selSquare = this.rand(0, this.squareData[depth].length);
+        drawSquare = true;
+      }
       for (let index = 0; index < this.squareData[depth].length; index++) {
-        if (this.rand(0, 10) % 4 === 0) {
+        if (drawSquare && selSquare === index) {
+          if (this.squareData[depth][index] === 1) {
+            this.squareData = [new Array(16), new Array(64), new Array(256)];
+          }
           this.squareData[depth][index] = 1;
-        } else {
-          this.squareData[depth][index] = null;
         }
       }
     }
@@ -105,30 +112,46 @@ class MusicsCanvas {
     }
   }
 
+  drawCross() {
+    this.ctx.beginPath();
+    this.ctx.moveTo(this.canvas.width / 2, this.canvas.height);
+    this.ctx.lineTo(this.canvas.width / 2, 0);
+    this.ctx.stroke();
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(0, this.canvas.height / 2);
+    this.ctx.lineTo(this.canvas.width, this.canvas.height / 2);
+    this.ctx.stroke();
+  }
+
   updateCanvas(ctx, canvas) {
-    // this.analyser.getByteFrequencyData(this.dataArray);
-    // // clear screen
-    // ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // /* get realtime fft data */
-    // let fftAvg = [0, 0, 0];
-    // for (let j = 0; j < 3; j++) {
-    //   for (
-    //     let i = Math.floor(this.bufferLength / 3 * j);
-    //     i < this.bufferLength / 3 * (j + 1);
-    //     i++
-    //   ) {
-    //     fftAvg[j] += this.dataArray[i];
-    //   }
-    //   fftAvg[j] = fftAvg[j] / this.bufferLength / 3;
-    // }
-    ///////////////////////////////////////
-    // this.drawSquareData(ctx, canvas); //
-    //                                   //
-    // // things                         //
-    // requestAnimationFrame(() => {     //
-    //   this.updateCanvas(ctx, canvas); //
-    // });                               //
-    ///////////////////////////////////////
+    this.analyser.getByteFrequencyData(this.dataArray);
+
+    // clear screen
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    /* get realtime fft data */
+    let fftAvg = [0, 0, 0];
+    for (let j = 0; j < 3; j++) {
+      for (
+        let i = Math.floor(this.bufferLength / 3 * j);
+        i < this.bufferLength / 3 * (j + 1);
+        i++
+      ) {
+        fftAvg[j] += this.dataArray[i];
+      }
+      fftAvg[j] = fftAvg[j] / this.bufferLength / 3;
+    }
+
+    this.generateSquareData(fftAvg);
+    this.drawSquareData();
+    this.drawCross();
+
+    //this.squareData = [new Array(16), new Array(64), new Array(256)];
+
+    requestAnimationFrame(() => {
+      this.updateCanvas(ctx, canvas);
+    });
   }
 }
 
