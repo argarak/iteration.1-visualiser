@@ -8,13 +8,15 @@ class MusicsCanvas {
     this.analyser = null;
 
     this.barGradient = null;
-    this.lineWidth = 1;
+    this.lineWidth = 2;
     this.lineColour = "#aaa";
 
     this.ctx = null;
     this.canvas = null;
 
-    this.threshold = [10, 10, 4];
+    //this.threshold = [12, 11, 4];
+    this.threshold = [1, 1, 1];
+    this.multSeed = -1;
 
     this.squareData = [new Array(16), new Array(64), new Array(256)];
   }
@@ -23,6 +25,10 @@ class MusicsCanvas {
     min = Math.ceil(min);
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  changeMultSeed(self) {
+    self.multSeed = self.rand(5, 60);
   }
 
   canvasInit() {
@@ -37,6 +43,8 @@ class MusicsCanvas {
 
     ctx.lineWidth = this.lineWidth;
     ctx.strokeStyle = this.lineColour;
+
+    window.setInterval(this.changeMultSeed, 1000*60*5, this);
 
     if (this.analyser) {
       // fft data stuff
@@ -62,23 +70,59 @@ class MusicsCanvas {
   generateSquareData(fftAvg) {
     //console.log(fftAvg);
 
+    if (this.multSeed === -1) {
+      this.changeMultSeed(this);
+    }
+
     for (let depth = 0; depth < 3; depth++) {
       let selSquare;
       let drawSquare = false;
 
       if (fftAvg[depth] > this.threshold[depth]) {
         // choose a random number depending on depth
-        selSquare = this.rand(0, this.squareData[depth].length);
+        // selSquare = this.rand(0, this.squareData[depth].length);
+
+        // randomise this parameter when there's silence between tracks??
+        selSquare =
+          Math.floor(fftAvg[depth] * this.multSeed * (depth+1) * Math.sin(fftAvg[depth] / 5)) %
+          this.squareData[depth].length;
         drawSquare = true;
+      } else {
+        // switch (depth) {
+        //   case 0:
+        //     this.squareData[depth] = new Array(16);
+        //     break;
+        //   case 1:
+        //     this.squareData[depth] = new Array(64);
+        //     break;
+        //   case 2:
+        //     this.squareData[depth] = new Array(256);
+        //     break;
+        // }
       }
       for (let index = 0; index < this.squareData[depth].length; index++) {
         if (drawSquare && selSquare === index) {
-          if (this.squareData[depth][index] === 1) {
-            this.squareData = [new Array(16), new Array(64), new Array(256)];
+          if (this.squareData[depth][index] > 0.5) {
+            let nextindex = index + 1;
+            if (
+              this.squareData[depth][
+                nextindex % this.squareData[depth].length
+              ] > 0.5
+            ) {
+              //this.squareData = [new Array(16), new Array(64), new Array(256)];
+            } else {
+              this.squareData[depth][
+                nextindex % this.squareData[depth].length
+              ] = 1;
+            }
           }
           this.squareData[depth][index] = 1;
         }
       }
+
+      this.squareData[depth] = this.squareData[depth].map(
+        x => (x && x > 0.001 ? x * 0.6 : 0)
+      );
     }
   }
 
@@ -100,10 +144,12 @@ class MusicsCanvas {
           if (
             this.squareData[depth][
               xindex + yindex * Math.sqrt(this.squareData[depth].length)
-            ] === 1
+            ] > 0
           ) {
             this.ctx.lineWidth = this.lineWidth;
-            this.ctx.strokeStyle = this.lineColour;
+            this.ctx.strokeStyle = `rgba(255, 255, 255, ${this.squareData[
+              depth
+            ][xindex + yindex * Math.sqrt(this.squareData[depth].length)]})`;
             this.ctx.rect(xindex * size, yindex * size, size, size);
             this.ctx.stroke();
           }
@@ -113,6 +159,7 @@ class MusicsCanvas {
   }
 
   drawCross() {
+    this.ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
     this.ctx.beginPath();
     this.ctx.moveTo(this.canvas.width / 2, this.canvas.height);
     this.ctx.lineTo(this.canvas.width / 2, 0);
@@ -146,8 +193,6 @@ class MusicsCanvas {
     this.generateSquareData(fftAvg);
     this.drawSquareData();
     this.drawCross();
-
-    //this.squareData = [new Array(16), new Array(64), new Array(256)];
 
     requestAnimationFrame(() => {
       this.updateCanvas(ctx, canvas);
