@@ -1,3 +1,25 @@
+//////////////////////////////////////////////////////////////////////////////
+// @licstart  The following is the entire license notice for the            //
+// JavaScript code in this page.                                            //
+//                                                                          //
+// Copyright 2021 Jakub Kukielka <dev at argarak.me>                        //
+//                                                                          //
+// Licensed under the Apache License, Version 2.0 (the "License");          //
+// you may not use this file except in compliance with the License.         //
+//   You may obtain a copy of the License at                                //
+//                                                                          //
+// http://www.apache.org/licenses/LICENSE-2.0                               //
+//                                                                          //
+// Unless required by applicable law or agreed to in writing, software      //
+// distributed under the License is distributed on an "AS IS" BASIS,        //
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. //
+//   See the License for the specific language governing permissions and    //
+// limitations under the License.                                           //
+//                                                                          //
+// @licend  The above is the entire license notice                          //
+// for the JavaScript code in this page.                                    //
+//////////////////////////////////////////////////////////////////////////////
+
 class MusicsCanvas {
   constructor() {
     this.width = 400;
@@ -14,7 +36,6 @@ class MusicsCanvas {
     this.ctx = null;
     this.canvas = null;
 
-    //this.threshold = [12, 11, 4];
     this.threshold = [1, 1, 1];
     this.multSeed = -1;
 
@@ -68,8 +89,6 @@ class MusicsCanvas {
   // [[0, 0], [canvas.width / 2, 0], [0, canvas.height / 2], [canvas.width / 2, canvas.height / 2]]
 
   generateSquareData(fftAvg) {
-    //console.log(fftAvg);
-
     if (this.multSeed === -1) {
       this.changeMultSeed(this);
     }
@@ -79,26 +98,12 @@ class MusicsCanvas {
       let drawSquare = false;
 
       if (fftAvg[depth] > this.threshold[depth]) {
-        // choose a random number depending on depth
-        // selSquare = this.rand(0, this.squareData[depth].length);
-
-        // randomise this parameter when there's silence between tracks??
+        // select the square to show, based on the fft data plus some
+        // modulation to make it more interesting
         selSquare =
           Math.floor(fftAvg[depth] * this.multSeed * (depth+1) * Math.sin(fftAvg[depth] / 5)) %
           this.squareData[depth].length;
         drawSquare = true;
-      } else {
-        // switch (depth) {
-        //   case 0:
-        //     this.squareData[depth] = new Array(16);
-        //     break;
-        //   case 1:
-        //     this.squareData[depth] = new Array(64);
-        //     break;
-        //   case 2:
-        //     this.squareData[depth] = new Array(256);
-        //     break;
-        // }
       }
       for (let index = 0; index < this.squareData[depth].length; index++) {
         if (drawSquare && selSquare === index) {
@@ -107,10 +112,8 @@ class MusicsCanvas {
             if (
               this.squareData[depth][
                 nextindex % this.squareData[depth].length
-              ] > 0.5
+              ] <= 0.5
             ) {
-              //this.squareData = [new Array(16), new Array(64), new Array(256)];
-            } else {
               this.squareData[depth][
                 nextindex % this.squareData[depth].length
               ] = 1;
@@ -177,7 +180,7 @@ class MusicsCanvas {
     // clear screen
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    /* get realtime fft data */
+    // get realtime fft data
     let fftAvg = [0, 0, 0];
     for (let j = 0; j < 3; j++) {
       for (
@@ -208,8 +211,6 @@ document.addEventListener("DOMContentLoaded", () => {
   navigator.mediaDevices
     .getUserMedia(constraints)
     .then(function(mediaStream) {
-      console.log(mediaStream);
-
       var audioCtx = new window.AudioContext();
       var analyser = audioCtx.createAnalyser();
       const track = audioCtx.createMediaStreamSource(mediaStream);
